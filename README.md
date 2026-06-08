@@ -197,4 +197,4 @@ Open your browser and navigate to:
 
 ---
 
-*README written with supervised assistance from Gemini 3.5.*
+*README written with supervised assistance from Claude Opus 4.8.*
