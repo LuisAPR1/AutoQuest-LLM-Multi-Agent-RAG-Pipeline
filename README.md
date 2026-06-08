@@ -56,33 +56,17 @@ The project features a standalone Windows executable (`AutoQuest.exe`) for insta
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    subgraph Session0 ["1. Session 0 (Character Creation)"]
-        A[GM Narrator Pitch] --> B[Player Character Proposals]
-        B --> C[Starter Synthesizes Party Sheet]
-        C --> D{Circulation Loop: Approve / Modify}
-        D -- Modify --> C
-        D -- Approved --> E[Python Pre-Validation]
-        E --> F[Arbiter Thematic Check]
-        F -- Valid --> G[Lock Character Sheets]
-    end
+### Session 0: Character Creation
 
-    subgraph GameLoop ["2. Active Game Loop (Turn-based)"]
-        H[Players Deliberate & Action] --> I[Memory Keeper Summarizes Action]
-        I --> J{Arbiter Checks Validity}
-        J -- Invalid --> H
-        J -- Valid --> K[Commit to Validated Memory]
-        K --> L[GM Narrator Progresses Story]
-        L --> M[Memory Keeper Summarizes Narrator]
-        M --> N{Arbiter Checks Narrator}
-        N -- Invalid --> L
-        N -- Valid --> O[Commit to Validated Memory]
-        O --> H
-    end
+<p align="center">
+  <img src="assets/session_zero.png" alt="Session 0: Character Creation" width="100%">
+</p>
 
-    G --> H
-```
+### Active Campaign Game Loop
+
+<p align="center">
+  <img src="assets/game_loop.png" alt="Active Campaign Game Loop" width="100%">
+</p>
 
 ---
 
