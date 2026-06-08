@@ -1,52 +1,60 @@
-# AutoQuest
+# AutoQuest – LLM Multi-Agent RAG Pipeline
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Ollama](https://img.shields.io/badge/LLM-Ollama-orange.svg)](https://ollama.com)
-[![Flask](https://img.shields.io/badge/Web-Flask-lightgrey.svg)](https://flask.palletsprojects.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+> An autonomous multi-agent RPG simulation framework featuring collaborative character creation (Session 0), a synchronized Game Master validation loop (Narrator, Memory Keeper, and Arbiter), and a real-time event monitoring web dashboard.
 
-An **AI-Powered Multi-Agent RPG Campaign Simulator** that brings cooperative tabletop roleplaying to life. Multiple AI players and a specialized multi-agent AI Game Master interact to create characters, coordinate actions, validate rules, and play through an epic, coherent story.
+AutoQuest is a complete multi-agent roleplaying simulation system that orchestrates coordinated LLM interactions to manage state, private memories, rules, and narrative consistency. The framework demonstrates Retrieval-Augmented Generation (RAG) with shared memory validation and private character thoughts to prevent LLM hallucinations.  
+**This project was developed as part of a university course assignment (Agents and Multi-Agent Systems, IST 2025/2026).**
 
-With support for both an **interactive terminal CLI** and a **dynamic WebSocket-powered Web GUI**, AutoQuest demonstrates how a pipeline of coordinated LLMs can handle state, memory, rules, and narrative consistency.
+## Contents
 
----
-
-## Table of Contents
-1. [Core Features](#core-features)
-2. [Architecture Overview](#architecture-overview)
-3. [System Mechanics](#system-mechanics)
-4. [Getting Started](#getting-started)
-5. [How to Run](#how-to-run)
-6. [Project Structure](#project-structure)
-7. [Configuration](#configuration)
+- [Overview](#overview)  
+- [Features](#features)  
+- [Architecture](#architecture)  
+- [Technology Stack](#technology-stack)  
+- [Project Structure](#project-structure)  
+- [Installation](#installation)  
+- [How to Run](#how-to-run)  
+- [License & Acknowledgments](#license--acknowledgments)
 
 ---
 
-## Core Features
+## Overview
 
-### 1. Specialized Multi-Agent Game Master (GM)
-Instead of relying on a single, expensive LLM prompt to run the game, the Game Master is split into three specialized agents for optimal reliability, speed, and narrative consistency:
-*   **Narrator**: Progresses the story and describes the outcomes of validated actions in 3–6 sentences.
-*   **Memory Keeper**: Captures the raw logs of player actions and events, summarizing them into concise, factual statements.
-*   **Arbiter (Anti-Hallucination Guard)**: The referee. It compares new actions against validated facts. If a player or narrator "hallucinates" (e.g., uses an item they don't possess or changes the environment invalidly), the Arbiter rejects the action, triggers a retry loop, or deletes the offending memory.
+This project implements a synchronized multi-agent system that simulates a collaborative tabletop RPG session. The system coordinates several independent AI agents to maintain a coherent narrative while enforcing rule and game-state consistency.
 
-### 2. Session 0: Character Creation Protocol
-Before the campaign begins, the AI players and GM undergo a collaborative **Session 0**:
-1.  **World Pitch**: The GM Narrator introduces the setting and theme.
-2.  **Character Proposals**: Players draft their Name, Race, Class, Personality, and distribute the **D&D Standard Array** attributes.
-3.  **Deliberation & Synthesis**: A random starter compiles the proposals, followed by a circulation pass where players vote to `APPROVE` or `MODIFY` the sheet.
-4.  **Dual-Stage Validation**: 
-    *   **Python Pre-validation**: Programmatically verifies that all characters have exactly the 6 Standard Array attributes and 100 HP (saving LLM token costs).
-    *   **LLM Arbiter Verification**: Checks thematic consistency and world compliance.
-5.  **Character Sheet Locking**: Once approved, character sheets are written to a protected block in memory and to the players' private diaries.
+The simulation runs through two main phases:
 
-### 3. State Management & Memory Diaries
-*   **Shared Memory (`memory.json`)**: Tracks the validated history of the campaign. Character data is stored in a `protected_player_data` block, preventing it from being modified or truncated during memory condensation/compression.
-*   **Private Memory Diaries (`memory_diary_{Name}.json`)**: Each player maintains their own thoughts and evolving traits (mood, trust in party, risk tolerance, goals) updated via a memory-efficient $O(1)$ trait tracking structure.
+- **Session 0 (Character Creation):** A collaborative negotiation where AI players propose character sheets (Name, Race, Class, Attributes, Personality) using the D&D Standard Array, debate adjustments, and compile a final sheet that is programmatically and semantically validated.
+- **Active Campaign:** A turn-based game loop where players deliberate group actions, a Memory Keeper captures and registers events in a shared RAG memory, an Arbiter checks the actions for rule-breaking or hallucinations, and a Narrator continues the story.
+
+The project features a standalone Windows executable (`AutoQuest.exe`) for instant testing, a terminal CLI interface, and a web application featuring a Socket.IO real-time monitor.
 
 ---
 
-## Architecture Overview
+## Features
+
+### Session 0 Character Creation
+
+- **Collaborative Negotiation:** Multi-round player deliberation where characters vote to approve or modify character proposals.
+- **D&D Standard Array Distribution:** Programmatic enforcement of attribute points (15, 14, 13, 12, 10, 8) across standard stats (Str, Dex, Con, Int, Wis, Cha).
+- **Dual-Stage Validation:** Fast programmatic pre-validation via Python regex (0 tokens cost) followed by semantic validation via the LLM Arbiter.
+- **Character Sheet Locking:** Once approved, sheets are locked in a protected memory block that resists memory condensation.
+
+### Multi-Agent Game Master (GM)
+
+- **Narrator:** Dynamically advances the campaign based on the validated history.
+- **Memory Keeper:** Summarizes raw turn details into clean, factual memory entries.
+- **Arbiter:** Reviews new memory candidates and deletes or flags them if they contain environmental or item-possession hallucinations.
+
+### Retrieval-Augmented Generation (RAG) & Memory
+
+- **Shared Memory Store (`memory.json`):** Persistent JSON memory with a protected section for player data and an active game history.
+- **Memory Condensation:** Automatically condenses older validated memories into high-level summaries when size limits are reached, maintaining a sliding context window.
+- **Private Memory Diaries (`memory_diary_{Name}.json`):** Keeps secret thoughts and traits (mood, trust in party, goals) using a space-efficient O(1) format.
+
+---
+
+## Architecture
 
 ```mermaid
 flowchart TD
@@ -78,77 +86,26 @@ flowchart TD
 
 ---
 
-## System Mechanics
+## Technology Stack
 
-### D&D Standard Array
-During Session 0, players must distribute the six standard attribute scores: **15, 14, 13, 12, 10, 8** across their D&D stats:
-*   **Strength (Str)** | **Dexterity (Dex)** | **Constitution (Con)**
-*   **Intelligence (Int)** | **Wisdom (Wis)** | **Charisma (Cha)**
+### Core and Frameworks
 
-### Shared Memory Formatting
-Memory entries are serialized with validation tags and author tags to keep the LLM context structured:
-```
-[SYSTEM_PROTECTED_PLAYER_DATA]
-Player_1: {Name: Thorin, Race: Dwarf, Class: Cleric, Attributes: [Str:15, Dex:8, Con:14, Int:10, Wis:13, Cha:12], HP: 100...}
-[/SYSTEM_PROTECTED_PLAYER_DATA]
+| Component | Technology |
+|-----------|------------|
+| Language | Python 3.10+ |
+| LLM Host | Ollama (local execution) |
+| Web Server | Flask 3.1.1 |
+| Real-time Communication | Flask-SocketIO 5.5.1 |
+| Packaging / Executable | PyInstaller |
 
---- GAME HISTORY ---
-[validated] [narrator] (id=f8167405): The party arrives at the ruined marketplace.
-[validated] [Thorin] (id=532f382e): Thorin swings a merchant hammer at the Lurker demon.
-```
+### Web Interface Frontend
 
----
-
-## Getting Started
-
-### Prerequisites
-*   **Python 3.10 or higher**
-*   **Ollama** (running locally)
-
-### 1. Install & Run Ollama
-Download Ollama from [ollama.com](https://ollama.com) and start the service.
-
-Ensure you have the model pulled that is configured in `config.py`. By default, the project is configured to use `gpt-oss:20b-cloud`, but you can pull any model you prefer (e.g., `llama3` or `mistral`) and update the `MODEL` configuration in [config.py](file:///c:/Users/Luisr/Desktop/IST/ASSMA/AutoQuest/config.py):
-```bash
-ollama pull llama3
-```
-
-### 2. Setup the Python Virtual Environment
-Clone the repository and navigate to the project directory:
-```bash
-# Create virtual environment
-python -m venv .venv
-
-# Activate virtual environment
-# On Windows:
-.venv\Scripts\activate
-# On macOS/Linux:
-source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
----
-
-## How to Run
-
-### Option A: Interactive CLI Mode
-Play or simulate the game directly inside your terminal. You can specify the number of players (1 to 6).
-```bash
-python main.py
-```
-
-### Option B: Dynamic Web GUI Mode
-Run the Flask server to view the simulation in a stunning, real-time web dashboard featuring dark medieval styling, animated HP bars, active GM pipeline feeds, and phase logs.
-```bash
-# Start the Web Server
-python web/server.py
-```
-After starting the server, open your browser and navigate to:
-**[http://127.0.0.1:5050](http://127.0.0.1:5050)**
-
-Choose the number of players and click **Start Campaign** to watch the agents plan, deliberate, and roll actions in real time!
+| Component | Technology |
+|-----------|------------|
+| Structure & Logic | HTML5, Vanilla JavaScript |
+| Styling | Vanilla CSS (Dark Medieval style) |
+| Typography | Google Fonts (Cinzel, Crimson Text, JetBrains Mono) |
+| Server-Client Sync | Socket.IO client library |
 
 ---
 
@@ -156,38 +113,104 @@ Choose the number of players and click **Start Campaign** to watch the agents pl
 
 ```
 AutoQuest/
-│
 ├── agents/                 # Agent logic and prompts
 │   ├── gm/                 # Game Master specialized agents
 │   │   ├── arbiter.py      # Rule validation and anti-hallucination
-│   │   ├── gm.py           # GM Orquestrator & synchronous campaign runner
+│   │   ├── gm.py           # GM Orchestrator & synchronous campaign runner
 │   │   ├── memory_keeper.py# Event facts summarizer
 │   │   ├── memory_store.py # Read/Write interface for memory.json
 │   │   └── narrator.py     # Story narration generator
 │   ├── player.py           # Player agent action, synthesis, and review
 │   └── session_zero.py     # Character creation & voting protocol
-│
 ├── models/                 # Shared data structures (Player, Class, Item)
 ├── web/                    # Flask + Socket.IO Server and Frontend
 │   ├── templates/          # HTML Templates (index.html with custom styling)
 │   └── server.py           # Socket.IO Event listener and Web interface hook
-│
+├── tests/                  # Unit and integration tests
+│   ├── test.py             # Basic model tests
+│   ├── test_diary_segregation.py  # Diary isolation tests
+│   └── test_memory_management.py # Memory validation and condensation tests
+├── AutoQuest.exe           # Standalone pre-compiled Windows executable
 ├── config.py               # Ollama model wrappers, Token tracking, and Loggers
 ├── main.py                 # CLI Game entrypoint
 ├── requirements.txt        # Project package dependencies
-└── tests/                  # Unit and integration tests
+└── README.md
 ```
 
 ---
 
-## Configuration
+## Installation
 
-Key simulation parameters can be configured directly in the code:
-*   **Ollama Model**: E.g., `MODEL = "llama3"` in [config.py](file:///c:/Users/Luisr/Desktop/IST/ASSMA/AutoQuest/config.py).
-*   **Campaign Turns**: Configure `NUM_ROUNDS = 20` in [main.py](file:///c:/Users/Luisr/Desktop/IST/ASSMA/AutoQuest/main.py) or [server.py](file:///c:/Users/Luisr/Desktop/IST/ASSMA/AutoQuest/web/server.py).
-*   **Session 0 Limit**: Set `SESSION_ZERO_MAX_ROUNDS = 3` in [session_zero.py](file:///c:/Users/Luisr/Desktop/IST/ASSMA/AutoQuest/agents/session_zero.py).
-*   **Max Modifications**: Set `MAX_MODIFICATIONS = 3` in [session_zero.py](file:///c:/Users/Luisr/Desktop/IST/ASSMA/AutoQuest/agents/session_zero.py).
+### Prerequisites
+
+| Requirement | Version |
+|-------------|---------|
+| Operating System | Windows (for Executable), Any (for Python source) |
+| Python | 3.10 or higher |
+| Ollama | Latest (running locally) |
+
+### Setup Steps
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/LuisAPR1/AutoQuest-LLM-Multi-Agent-RAG-Pipeline.git
+   cd AutoQuest-LLM-Multi-Agent-RAG-Pipeline
+   ```
+
+2. **Pull the configured LLM**
+   By default, the project configures `gpt-oss:20b-cloud` (or you can update `MODEL` in `config.py` to any model such as `llama3` or `mistral`):
+   ```bash
+   ollama pull llama3
+   ```
+
+3. **Install python dependencies (if running from source)**
+   ```bash
+   python -m venv .venv
+   # On Windows:
+   .venv\Scripts\activate
+   # On macOS/Linux:
+   source .venv/bin/activate
+
+   pip install -r requirements.txt
+   ```
 
 ---
 
-*Enjoy your automated RPG journey! May the rolls be in your favor.*
+## How to Run
+
+### Option A: Standalone Executable (Windows Only)
+
+You can run the application instantly using the pre-compiled executable at the root of the project:
+
+1. Double-click `AutoQuest.exe` or run it from the terminal:
+   ```cmd
+   AutoQuest.exe
+   ```
+
+### Option B: Interactive CLI Mode (from Source)
+
+Play or simulate the game directly inside your terminal:
+```bash
+python main.py
+```
+
+### Option C: Web GUI Mode (from Source)
+
+Launch the Flask server to view the simulation in the dynamic medieval-themed dashboard:
+```bash
+python web/server.py
+```
+Open your browser and navigate to:
+**[http://127.0.0.1:5050](http://127.0.0.1:5050)**
+
+---
+
+## License & Acknowledgments
+
+- Educational project developed as part of the Agents and Multi-Agent Systems course (IST, 2025/2026).  
+- Built on top of Flask, Flask-SocketIO, Ollama, and PyInstaller.  
+- Source code is licensed under the MIT License — see [LICENSE](LICENSE).  
+
+---
+
+*README written with supervised assistance from Gemini 3.5.*
