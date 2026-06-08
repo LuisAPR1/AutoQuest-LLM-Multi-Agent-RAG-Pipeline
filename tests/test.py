@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), '..')))
+
 from models.item import Item
 from models.dnd_class import Class
 from models.player import Player
